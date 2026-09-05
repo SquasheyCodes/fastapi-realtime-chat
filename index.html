@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatten - Phase 2</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+    <h2>Chatten - Phase 2</h2>
+    
+    <!-- Connection Setup -->
+    <div id="setup">
+        <input type="text" id="username" placeholder="Username" style="padding: 5px;"/>
+        <input type="text" id="roomId" placeholder="Room ID" style="padding: 5px;"/>
+        <button onclick="connect()" style="padding: 5px 10px;">Join Room</button>
+    </div>
+
+    <!-- Live Chat Interface (Hidden until connected) -->
+    <div id="chat" style="display: none; margin-top: 20px;">
+        <h3 id="roomTitle"></h3>
+        <form onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off" style="padding: 5px; width: 300px;"/>
+            <button style="padding: 5px 10px;">Send</button>
+        </form>
+        <ul id='messages'></ul>
+    </div>
+
+    <script>
+        let ws;
+
+        function connect() {
+            const username = document.getElementById("username").value;
+            const roomId = document.getElementById("roomId").value;
+            
+            if (!username || !roomId) {
+                alert("Please enter both Username and Room ID");
+                return;
+            }
+
+            // Connect using the dynamic URL routing
+            ws = new WebSocket(`ws://127.0.0.1:8000/ws/${roomId}/${username}`);
+            
+            ws.onmessage = function(event) {
+                const messages = document.getElementById('messages');
+                const message = document.createElement('li');
+                message.appendChild(document.createTextNode(event.data));
+                messages.appendChild(message);
+            };
+
+            // Switch UI views
+            document.getElementById("setup").style.display = "none";
+            document.getElementById("chat").style.display = "block";
+            document.getElementById("roomTitle").innerText = `Room: ${roomId} | User: ${username}`;
+        }
+        
+        function sendMessage(event) {
+            event.preventDefault();
+            const input = document.getElementById("messageText");
+            
+            // Package the data as a JSON object to satisfy the backend Pydantic model
+            const payload = {
+                content: input.value
+            };
+            
+            ws.send(JSON.stringify(payload));
+            input.value = '';
+        }
+    </script>
+</body>
+</html>
