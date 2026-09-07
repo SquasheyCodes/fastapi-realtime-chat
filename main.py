@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, ValidationError
-from database import ASL
+from database import ASL, get_history
 from models import Message
 
 async def save_msg(username, room_id, content):
@@ -49,6 +49,10 @@ manager = ConnectionManager()
 @app.websocket('/ws/{room_id}/{username}')
 async def websocket_endpoint(websocket:WebSocket, room_id, username):
     await manager.connect(websocket, room_id)
+    load_msg = await get_history(room_id)
+    if load_msg:
+        for msg in range(len(load_msg)-1, -1, -1):
+            await websocket.send_text(f"{load_msg[msg].username} : {load_msg[msg].content}")
     await manager.broadcast(f"{username} has joined the room", room_id)
     try:
         while True:
@@ -63,6 +67,4 @@ async def websocket_endpoint(websocket:WebSocket, room_id, username):
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)
         await manager.broadcast(f"{username} left the room", room_id)
-
-
 

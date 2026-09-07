@@ -2,11 +2,11 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
+from sqlalchemy import select
 
-# Forces Python to read the hidden .env file
+
 load_dotenv()
 
-# Safely imports the URL into your application
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
@@ -19,4 +19,19 @@ ASL = sessionmaker(
 
 BASE = declarative_base()
 
+
+
+async def get_history(room_id):
+
+    async with ASL() as session:
+
+        que = (select(Message).where(Message.room_id == room_id).order_by(Messaage.id.desc()).limit(50))
+
+        result = await session.execute(que)
+
+
+        messages = result.scalars.all()
+
+        return messages
+    
 
