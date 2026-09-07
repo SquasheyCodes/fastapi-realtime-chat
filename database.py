@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
 from sqlalchemy import select
+from models import Message
 
 
 load_dotenv()
@@ -25,12 +26,12 @@ async def get_history(room_id):
 
     async with ASL() as session:
 
-        que = (select(Message).where(Message.room_id == room_id).order_by(Messaage.id.desc()).limit(50))
+        que = (select(Message).where(Message.room_id == room_id).order_by(Message.id.desc()).limit(50))
 
         result = await session.execute(que)
 
 
-        messages = result.scalars.all()
+        messages = result.scalars().all()
 
         return messages
     
