@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from dotenv import load_dotenv
 from sqlalchemy import select
-from models import Message
+
 
 
 load_dotenv()
@@ -21,7 +21,7 @@ ASL = sessionmaker(
 BASE = declarative_base()
 
 
-
+from models import Message
 async def get_history(room_id):
 
     async with ASL() as session:
