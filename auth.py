@@ -3,7 +3,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from dotenv import load_dotenv
-from fastapi import WebSocketDisconnect, status, HTTPException
+from fastapi import WebSocketException, status, HTTPException
 
 load_dotenv()
 
@@ -36,19 +36,22 @@ def get_current_user(token:str):
 
     try:
         fetched_token = jwt.decode(token, sec_key, algorithms=[algo])
-        return fetched_token.username
+        user = fetched_token.get("sub")
+        if not user:
+            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+        return user
 
     except jwt.InvalidTokenError:
         raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid credentials"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid credentials"
                 
-                        ) 
+        ) 
 
     except jwt.InvalidSignatureError:
         raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid credentials"
-                
-                        ) 
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid credentials"
+
+        ) 
         
