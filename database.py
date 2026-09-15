@@ -34,5 +34,13 @@ async def get_history(room_id):
         messages = result.scalars().all()
 
         return messages
+
+
+async def get_db():
+
+    async with ASL() as session:
+        yield session
+
+    
     
 

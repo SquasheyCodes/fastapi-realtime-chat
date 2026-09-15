@@ -1,7 +1,16 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from pydantic import BaseModel, ValidationError
-from database import ASL, get_history
+from database import ASL, get_history, get_db
 from models import Message
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+import models
+import auth
+
+
+class UserCreate(BaseModel):
+    username: str
+    password:str
 
 async def save_msg(username, room_id, content):
     async with ASL() as session:
@@ -46,8 +55,9 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-@app.websocket('/ws/{room_id}/{username}')
-async def websocket_endpoint(websocket:WebSocket, room_id, username):
+@app.websocket('/ws/{room_id}')
+async def websocket_endpoint(websocket:WebSocket, room_id, token:str):
+    username = auth.get_current_user(token=token)
     await manager.connect(websocket, room_id)
     load_msg = await get_history(room_id)
     if load_msg:
@@ -68,3 +78,51 @@ async def websocket_endpoint(websocket:WebSocket, room_id, username):
         manager.disconnect(websocket, room_id)
         await manager.broadcast(f"{username} left the room", room_id)
 
+
+@app.post('/ws/register')
+async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+
+    query = select(models.User).where(models.User.username == user.username)
+    result = await db.execute(query)
+    fetched_user = result.scalars().first()
+
+    if fetched_user:
+        raise HTTPException(
+            status_code= status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists! Please choose another username"
+        )
+
+    hashed_password  = auth.get_pass_hash(user.password)
+    new_account = models.User(username=user.username, hashed_pass=hashed_password)
+    db.add(new_account)
+    await db.commit()
+    return {"message": "User registered"}
+
+
+
+@app.post('/ws/login')
+async def login_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+
+    query = select(models.User).where(models.User.username == user.username)
+    result = await db.execute(query)
+    fetched_user = result.scalars().first()
+
+    if not fetched_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid credentials"
+
+        )
+
+    password_hashed = fetched_user.hashed_pass
+    pass_verf = auth.verify_password(user.password, password_hashed )
+    if not pass_verf:
+        raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid credentials"
+        
+                )   
+    acess_token = {"sub": user.username}
+    token = auth.create_access_token(data=acess_token)
+
+    return {"access_token": token, "token_type" : "bearer"}

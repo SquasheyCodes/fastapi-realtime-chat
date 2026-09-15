@@ -41,17 +41,12 @@ def get_current_user(token:str):
             raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
         return user
 
+    except jwt.ExpiredSignatureError:
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION
+        ) 
+
     except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid credentials"
-                
-        ) 
-
-    except jwt.InvalidSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid credentials"
-
-        ) 
-        
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION
+        )
