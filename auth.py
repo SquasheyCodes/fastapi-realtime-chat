@@ -37,9 +37,10 @@ def get_current_user(token:str):
     try:
         fetched_token = jwt.decode(token, sec_key, algorithms=[algo])
         user = fetched_token.get("sub")
+        user_id = fetched_token.get("user_id")
         if not user:
             raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-        return user
+        return  {"username": user, "user_id" : user_id}
 
     except jwt.ExpiredSignatureError:
         raise WebSocketException(

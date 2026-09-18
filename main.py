@@ -12,9 +12,9 @@ class UserCreate(BaseModel):
     username: str
     password:str
 
-async def save_msg(username, room_id, content):
+async def save_msg(user_id, room_id, content):
     async with ASL() as session:
-        msg = Message(username=username, room_id=room_id, content=content)
+        msg = Message(user_id=user_id, room_id=room_id, content=content)
         session.add(msg)
         await session.commit()
 
@@ -46,18 +46,21 @@ class ConnectionManager:
                 del self.active_connections[room_id]
 
     async def broadcast(self, message:str, room_id:str):
-
         if room_id in self.active_connections:
-
-            for conection in self.active_connections[room_id]:
-                await conection.send_text(message)
+            for connection in list(self.active_connections[room_id]):
+                try:
+                    await connection.send_text(message)
+                except Exception:
+                    self.active_connections[room_id].remove(connection)
 
 
 manager = ConnectionManager()
 
 @app.websocket('/ws/{room_id}')
 async def websocket_endpoint(websocket:WebSocket, room_id, token:str):
-    username = auth.get_current_user(token=token)
+    user = auth.get_current_user(token=token)
+    username = user["username"]
+    user_id = user["user_id"]
     await manager.connect(websocket, room_id)
     load_msg = await get_history(room_id)
     if load_msg:
@@ -69,7 +72,7 @@ async def websocket_endpoint(websocket:WebSocket, room_id, token:str):
             data = await websocket.receive_text()
             try:
                 payload = MessagePayLoad.model_validate_json(data)
-                await save_msg(username, room_id, payload.content)
+                await save_msg(user_id, room_id, payload.content)
                 await manager.broadcast(f"{username}: {payload.content}", room_id)
             except ValidationError:
                 await websocket.send_text("Sys: Invalid message format")
@@ -122,7 +125,7 @@ async def login_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
                     detail="Invalid credentials"
         
                 )   
-    acess_token = {"sub": user.username}
+    acess_token = {"sub": fetched_user.username, "user_id" : fetched_user.id}
     token = auth.create_access_token(data=acess_token)
 
     return {"access_token": token, "token_type" : "bearer"}
