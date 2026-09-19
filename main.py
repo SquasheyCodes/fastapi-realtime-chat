@@ -1,16 +1,26 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field, field_validator
 from database import ASL, get_history, get_db
 from models import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import models
 import auth
+import re
 
 
 class UserCreate(BaseModel):
-    username: str
-    password:str
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8)
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one number')
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError('Password must contain at least one special character')
+        return v
 
 async def save_msg(user_id, room_id, content):
     async with ASL() as session:
