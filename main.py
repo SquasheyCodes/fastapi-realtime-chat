@@ -38,30 +38,34 @@ class MessagePayLoad(BaseModel):
 class ConnectionManager:
 
     def __init__(self):
-        self.active_connections: dict[str, list[WebSocket]] = {}
+        self.active_connections: dict[str, dict[WebSocket, str]] = {}
 
-    async def connect(self, websocket: WebSocket, room_id):
+    async def connect(self, websocket: WebSocket, room_id, username):
         await websocket.accept()
 
         if room_id not in self.active_connections:
-            self.active_connections[room_id] = []
+            self.active_connections[room_id] = {}
 
-        self.active_connections[room_id].append(websocket)
+        self.active_connections[room_id][websocket] = username
 
     def disconnect(self, websocket:WebSocket, room_id):
+
         if room_id in self.active_connections:
-            self.active_connections[room_id].remove(websocket)
+            user = self.active_connections[room_id][websocket]
+            del self.active_connections[room_id][websocket]
 
             if not self.active_connections[room_id]:
                 del self.active_connections[room_id]
 
-    async def broadcast(self, message:str, room_id:str):
+            return user
+    
+    async def broadcast(self, message:dict, room_id:str):
         if room_id in self.active_connections:
             for connection in list(self.active_connections[room_id]):
                 try:
-                    await connection.send_text(message)
+                    await connection.send_json(message)
                 except Exception:
-                    self.active_connections[room_id].remove(connection)
+                    del self.active_connections[room_id][connection]
 
 
 manager = ConnectionManager()
@@ -71,11 +75,27 @@ async def websocket_endpoint(websocket:WebSocket, room_id, token:str):
     user = auth.get_current_user(token=token)
     username = user["username"]
     user_id = user["user_id"]
-    await manager.connect(websocket, room_id)
+    await manager.connect(websocket, room_id, username=username)
+    active_users = list(manager.active_connections[room_id].values())
+    await websocket.send_json({
+        "type": "roster",
+        "active_users": active_users
+    })
+
+    await manager.broadcast({
+        "type": "presence",
+        "user": username,
+        "status": "online"
+    }, room_id)
+
     load_msg = await get_history(room_id)
     if load_msg:
         for msg in range(len(load_msg)-1, -1, -1):
-            await websocket.send_text(f"{load_msg[msg].username} : {load_msg[msg].content}")
+            await websocket.send_json({
+                "type": "chat",
+                "user": load_msg[msg].username,
+                "content": load_msg[msg].content
+            })
     await manager.broadcast(f"{username} has joined the room", room_id)
     try:
         while True:
@@ -83,14 +103,21 @@ async def websocket_endpoint(websocket:WebSocket, room_id, token:str):
             try:
                 payload = MessagePayLoad.model_validate_json(data)
                 await save_msg(user_id, room_id, payload.content)
-                await manager.broadcast(f"{username}: {payload.content}", room_id)
+                await manager.broadcast({
+                "type": "chat",
+                "user": username,
+                "content": payload.content
+        }, room_id)
             except ValidationError:
-                await websocket.send_text("Sys: Invalid message format")
+                await websocket.send_json({"type": "error", "content": "Invalid message format"})
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)
-        await manager.broadcast(f"{username} left the room", room_id)
-
+        await manager.broadcast({
+            "type": "presence",
+            "user": username,
+            "status": "offline"
+        }, room_id)
 
 @app.post('/ws/register')
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
