@@ -96,7 +96,6 @@ async def websocket_endpoint(websocket:WebSocket, room_id, token:str):
                 "user": load_msg[msg].username,
                 "content": load_msg[msg].content
             })
-    await manager.broadcast(f"{username} has joined the room", room_id)
     try:
         while True:
             data = await websocket.receive_text()

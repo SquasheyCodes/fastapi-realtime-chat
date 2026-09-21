@@ -21,20 +21,23 @@ ASL = sessionmaker(
 BASE = declarative_base()
 
 
-from models import Message
+from models import Message, User # Make sure to import User here
+
 async def get_history(room_id):
-
     async with ASL() as session:
-
-        que = (select(Message).where(Message.room_id == room_id).order_by(Message.id.desc()).limit(50))
+  
+        que = (
+            select(User.username, Message.content)
+            .join(User, Message.user_id == User.id)
+            .where(Message.room_id == room_id)
+            .order_by(Message.id.desc())
+            .limit(50)
+        )
 
         result = await session.execute(que)
-
-
-        messages = result.scalars().all()
-
+  
+        messages = result.all() 
         return messages
-
 
 async def get_db():
 
