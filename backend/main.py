@@ -7,6 +7,7 @@ from sqlalchemy import select
 import models
 import auth
 import re
+from fastapi.middleware.cors import CORSMiddleware
 
 
 class UserCreate(BaseModel):
@@ -31,6 +32,14 @@ async def save_msg(user_id, room_id, content):
 
 
 app = FastAPI(title='Chatten')
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5174"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class MessagePayLoad(BaseModel):
     content: str

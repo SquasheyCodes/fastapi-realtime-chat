@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from sqlalchemy import select
 
 
-
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")

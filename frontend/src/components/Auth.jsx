@@ -7,7 +7,32 @@ export default function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(`Attempting to ${isLogin ? 'login' : 'register'} with:`, username, password);
+    
+    // Notice the endpoints now include /ws/ to match your FastAPI routes
+    const endpoint = isLogin ? 'http://localhost:8000/ws/login' : 'http://localhost:8000/ws/register';
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log("Success! Backend says:", data);
+        alert(`${isLogin ? 'Login' : 'Registration'} successful!`);
+      } else {
+        console.error("Backend rejected the request:", data);
+        alert(data.detail || "Authentication failed");
+      }
+    } catch (error) {
+      console.error("Network error. Is FastAPI running?", error);
+      alert("Failed to connect to the backend server.");
+    }
   };
 
   return (
