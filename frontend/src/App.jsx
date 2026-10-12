@@ -1,41 +1,90 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Auth from './components/Auth';
+import ChatRoom from './components/ChatRoom';
+import RoomPicker from './components/RoomPicker';
+import {
+  clearSession,
+  getTokenExpiry,
+  loadRoom,
+  loadSession,
+  saveRoom,
+  saveSession,
+} from './lib/session';
+
+const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Read the saved login once, synchronously, so there is no flash of the
+  // login screen for someone who is already signed in.
+  const [session, setSession] = useState(loadSession);
+  const [room, setRoom] = useState(loadRoom);
+  const [notice, setNotice] = useState(null);
 
-  // When the app loads, check Local Storage for the token
-  useEffect(() => {
-    const token = localStorage.getItem('chatten_token');
-    if (token) {
-      setIsAuthenticated(true);
-    }
+  const handleLogout = useCallback(() => {
+    clearSession();
+    setSession(null);
+    setRoom(null);
   }, []);
 
-  const handleLogout = () => {
-    // Clear the vault and send the user back to the login screen
-    localStorage.removeItem('chatten_token');
-    localStorage.removeItem('chatten_username');
-    setIsAuthenticated(false);
+  const handleExpired = useCallback(() => {
+    handleLogout();
+    setNotice('Your session expired. Log in again to keep chatting.');
+  }, [handleLogout]);
+
+  // Tokens last 30 minutes. Send the user back to login when theirs runs out
+  // instead of letting the socket fail with no explanation.
+  const token = session?.token;
+  useEffect(() => {
+    if (!token) return undefined;
+    const exp = getTokenExpiry(token);
+    if (exp === null) return undefined;
+    const delay = Math.max(exp - Date.now(), 0);
+    // setTimeout fires immediately if the delay doesn't fit in 32 bits (~24.8
+    // days). Tokens here last 30 minutes, so this only guards odd tokens.
+    if (delay > MAX_TIMEOUT_MS) return undefined;
+    const timer = setTimeout(handleExpired, delay);
+    return () => clearTimeout(timer);
+  }, [token, handleExpired]);
+
+  const handleAuthSuccess = ({ token: newToken, username }) => {
+    saveSession(newToken, username);
+    setSession({ token: newToken, username });
+    setNotice(null);
   };
 
+  const handleJoin = (name) => {
+    saveRoom(name);
+    setRoom(name);
+  };
+
+  const handleLeave = () => {
+    saveRoom(null);
+    setRoom(null);
+  };
+
+  if (!session) {
+    return <Auth onAuthSuccess={handleAuthSuccess} notice={notice} />;
+  }
+
+  if (!room) {
+    return (
+      <RoomPicker
+        username={session.username}
+        onJoin={handleJoin}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   return (
-    <div>
-      {isAuthenticated ? (
-        <div className="h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
-          <h1 className="text-3xl font-bold mb-6 tracking-wide">Welcome to Chatten!</h1>
-          <p className="text-gray-400 mb-8">Your JWT token is active.</p>
-          <button 
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-6 rounded transition duration-200"
-          >
-            Logout
-          </button>
-          {/* We will build and insert the actual WebSocket chat interface here next */}
-        </div>
-      ) : (
-        <Auth onAuthSuccess={() => setIsAuthenticated(true)} />
-      )}
-    </div>
+    <ChatRoom
+      key={room}
+      room={room}
+      token={session.token}
+      username={session.username}
+      onLeave={handleLeave}
+      onLogout={handleLogout}
+      onExpired={handleExpired}
+    />
   );
 }
