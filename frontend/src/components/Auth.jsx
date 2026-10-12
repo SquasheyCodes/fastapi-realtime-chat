@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function Auth() {
+export default function Auth({ onAuthSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +24,19 @@ export default function Auth() {
 
       if (response.ok) {
         console.log("Success! Backend says:", data);
-        alert(`${isLogin ? 'Login' : 'Registration'} successful!`);
+        
+        if (isLogin) {
+          // 1. Save the token and username to the browser's memory
+          localStorage.setItem('chatten_token', data.access_token);
+          localStorage.setItem('chatten_username', username);
+          
+          alert('Login successful! Token securely saved.');
+          onAuthSuccess(); // Instantly switch the screen to the chat room!
+        } else {
+          alert('Registration successful! Please login to continue.');
+          // Automatically flip the form over to Login mode after registering
+          setIsLogin(true);
+        }
       } else {
         console.error("Backend rejected the request:", data);
         alert(data.detail || "Authentication failed");
