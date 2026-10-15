@@ -1,112 +1,201 @@
 @import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                       */
+/* Cool paper surfaces, ink text, one cobalt accent. Dark mode follows */
+/* the system setting unless the user picked a theme with the toggle   */
+/* (stored as data-theme on <html>).                                   */
+/* ------------------------------------------------------------------ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  color-scheme: light;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --paper: #f3f4f8;
+  --surface: #ffffff;
+  --sunken: #e9ebf1;
+  --line: #e1e4ec;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --ink: #10142a;
+  --ink-2: #4b5170;
+  --ink-3: #6f7590;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --accent: #3558ff;
+  --accent-hover: #2745e0;
+  --accent-soft: #e7ebff;
+  --accent-ink: #2443e6;
+
+  --ok: #12936a;
+  --warn: #a65f00;
+  --warn-soft: #fff3dc;
+  --danger: #cf2f40;
+  --danger-soft: #fdeceb;
+
+  /* Avatar tints: lightness for the background and the initial */
+  --av-bg-l: 0.92;
+  --av-fg-l: 0.42;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --paper: #0c0f1c;
+    --surface: #141829;
+    --sunken: #1b2034;
+    --line: #272d45;
+
+    --ink: #eef0fa;
+    --ink-2: #a8aec8;
+    --ink-3: #8087a5;
+
+    --accent-soft: #1b2552;
+    --accent-ink: #93a6ff;
+
+    --ok: #3ccf9b;
+    --warn: #f1b04c;
+    --warn-soft: #33260f;
+    --danger: #ff7a85;
+    --danger-soft: #3a1820;
+
+    --av-bg-l: 0.34;
+    --av-fg-l: 0.92;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #0c0f1c;
+  --surface: #141829;
+  --sunken: #1b2034;
+  --line: #272d45;
+
+  --ink: #eef0fa;
+  --ink-2: #a8aec8;
+  --ink-3: #8087a5;
+
+  --accent-soft: #1b2552;
+  --accent-ink: #93a6ff;
+
+  --ok: #3ccf9b;
+  --warn: #f1b04c;
+  --warn-soft: #33260f;
+  --danger: #ff7a85;
+  --danger-soft: #3a1820;
+
+  --av-bg-l: 0.34;
+  --av-fg-l: 0.92;
+}
+
+/* Expose the tokens as Tailwind utilities: bg-paper, text-ink-2, border-line... */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque", "Geist", ui-sans-serif, system-ui,
+    sans-serif;
+}
+
+@theme {
+  --animate-rise: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 0.3s ease-out both;
+  --animate-pop: pop 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
   margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+/* In the base layer so utilities like focus:outline-none can override it
+   (unlayered rules always beat layered ones). */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+/* Initial-letter avatars. --h is set per user from a hash of their name. */
+.avatar {
+  background: oklch(var(--av-bg-l) 0.08 var(--h));
+  color: oklch(var(--av-fg-l) 0.14 var(--h));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
