@@ -68,16 +68,19 @@ export function useChatSocket({ room, token, username }) {
         }
 
         if (data.type === 'roster') {
-          setOnline([...new Set(data.active_users)]);
+          // This socket is open, so you are always in the room.
+          setOnline([...new Set([username, ...data.active_users])]);
         } else if (data.type === 'presence') {
+          // Presence about yourself can come from another tab or a socket
+          // that just closed. Either way this one is still connected, so
+          // ignore it rather than dropping yourself from the list.
+          if (data.user === username) return;
           const isOnline = data.status === 'online';
           setOnline((prev) => {
             const without = prev.filter((u) => u !== data.user);
             return isOnline ? [...without, data.user] : without;
           });
-          if (data.user !== username) {
-            push({ kind: 'presence', user: data.user, status: data.status });
-          }
+          push({ kind: 'presence', user: data.user, status: data.status });
         } else if (data.type === 'chat') {
           push({ kind: 'chat', user: data.user, content: data.content });
         } else if (data.type === 'error') {
@@ -120,7 +123,12 @@ export function useChatSocket({ room, token, username }) {
       ws.onclose = handleDrop;
     };
 
-    connect();
+    // In development React runs every effect twice (mount, unmount, mount) to
+    // flush out bugs. Connecting straight away would open a socket and close
+    // it a moment later, and the server would tell everyone you joined, left
+    // and joined again. Waiting a tick lets that first pass be cancelled
+    // before any socket exists.
+    retryTimer = setTimeout(connect, 0);
 
     return () => {
       cancelled = true;
