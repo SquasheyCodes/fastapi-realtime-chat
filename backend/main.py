@@ -8,7 +8,7 @@ import models
 import auth
 import re
 from fastapi.middleware.cors import CORSMiddleware
-
+import os
 
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
@@ -33,16 +33,8 @@ async def save_msg(user_id, room_id, content):
 
 app = FastAPI(title='Chatten')
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://localhost:5174"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174")
+app.add_middleware(CORSMiddleware, allow_origins=origins.split(","), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 class MessagePayLoad(BaseModel):
     content: str
