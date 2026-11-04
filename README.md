@@ -1,4 +1,4 @@
-# Chatten
+# RELAY
 
 A real-time, multi-room chat app (built to the "Relay" spec). Log in, join any room by name, see who is online, catch up on the last 50 messages, and chat live over WebSockets.
 
